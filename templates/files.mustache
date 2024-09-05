@@ -15,9 +15,9 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-    @template datafield_file/file
+    @template datafield_files/files
 
-    The purpose of this template is to enable the user to define a file field.
+    The purpose of this template is to enable the user to define a files field.
 
     Classes required for JS:
     * none
@@ -53,6 +53,13 @@
                     <option value="{{value}}" {{#selected}}selected{{/selected}}>{{name}}</option>
                 {{/filesizes}}
             </select>
+        </div>
+    </div>
+    <div class="form-group row fitem">
+        <div class="col-md-3"><label for="param4" class="mb-0">
+            {{#str}}nofiles, datafield_files{{/str}}</label></div>
+        <div class="col-md-9 form-inline align-items-start felement">
+            <input class="fieldname form-control" type="text" name="param4" id="param4" value="{{param4}}">
         </div>
     </div>
 </fieldset>

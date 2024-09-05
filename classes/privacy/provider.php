@@ -14,19 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 /**
- * Privacy Subsystem implementation for datafield_file.
+ * Privacy Subsystem implementation for datafield_files.
  *
- * @package    datafield_file
+ * @package    datafield_files
  * @copyright  2018 Carlos Escobedo <carlos@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-namespace datafield_file\privacy;
+namespace datafield_files\privacy;
 use mod_data\privacy\datafield_provider;
 use core_privacy\local\request\writer;
 
 defined('MOODLE_INTERNAL') || die();
 /**
- * Privacy Subsystem for datafield_file implementing null_provider.
+ * Privacy Subsystem for datafield_files implementing null_provider.
  *
  * @copyright  2018 Carlos Escobedo <carlos@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

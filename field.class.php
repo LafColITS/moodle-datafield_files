@@ -15,14 +15,14 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Class file field for database activity
+ * Class files field for database activity
  *
  * @package    datafield_file
  * @copyright  2005 Martin Dougiamas
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class data_field_file extends data_field_base {
-    var $type = 'file';
+class data_field_files extends data_field_base {
+    var $type = 'files';
 
     public function supports_preview(): bool {
         return true;
@@ -51,7 +51,7 @@ class data_field_file extends data_field_base {
 
         // editing an existing database entry
         if ($formdata) {
-            $fieldname = 'field_' . $this->field->id . '_file';
+            $fieldname = 'field_' . $this->field->id . '_files';
             $itemid = clean_param($formdata->$fieldname, PARAM_INT);
         } else if ($recordid) {
             if (!$content = $DB->get_record('data_content', array('fieldid' => $this->field->id, 'recordid' => $recordid))) {
@@ -81,11 +81,10 @@ class data_field_file extends data_field_base {
         }
 
         // itemid element
-        $html .= '<input type="hidden" name="field_'.$this->field->id.'_file" value="'.s($itemid).'" />';
+        $html .= '<input type="hidden" name="field_'.$this->field->id.'_files" value="'.s($itemid).'" />';
 
         $options = new stdClass();
         $options->maxbytes = $this->field->param3;
-        $options->maxfiles  = 1; // Limit to one file for the moment, this may be changed if requested as a feature in the future.
         $options->itemid    = $itemid;
         $options->accepted_types = '*';
         $options->return_types = FILE_INTERNAL | FILE_CONTROLLED_LINK;
@@ -127,66 +126,77 @@ class data_field_file extends data_field_base {
         return optional_param($param, $defaults[$param], PARAM_NOTAGS);
     }
 
-    function get_file($recordid, $content=null) {
+    function get_files($recordid, $content=null) {
         global $DB;
         if (empty($content)) {
             if (!$content = $this->get_data_content($recordid)) {
                 return null;
             }
         }
+
         $fs = get_file_storage();
-        if (!$file = $fs->get_file($this->context->id, 'mod_data', 'content', $content->id, '/', $content->content)) {
+        if (!$files = $fs->get_area_files($this->context->id, 'mod_data', 'content', $content->id)) {
             return null;
         }
 
-        return $file;
+        return $files;
     }
 
     function display_browse_field($recordid, $template) {
-        global $OUTPUT;
-
         $content = $this->get_data_content($recordid);
 
         if (!$content || empty($content->content)) {
-            return '';
+            return $this->field->param4;
         }
-
-        $file = null;
-        $url = '';
-        $name = !empty($content->content1) ? $content->content1 : $content->content;
 
         if ($this->preview) {
             $file = (object)[
                 'filename' => $content->content,
                 'mimetype' => 'text/csv',
             ];
-            $name = $content->content;
+            $name = !empty($content->content1) ? $content->content1 : $content->content;
+            $items[] = $this->display_browse_field_item($file, '', $name);
         } else {
-            $file = $this->get_file($recordid, $content);
-            if (!$file) {
-                return '';
+            $files = $this->get_files($recordid, $content);
+            if (!$files) {
+                return $this->field->param4;
             }
-            $fileurl = moodle_url::make_pluginfile_url(
-                $file->get_contextid(),
-                $file->get_component(),
-                $file->get_filearea(),
-                $file->get_itemid(),
-                $file->get_filepath(),
-                $file->get_filename()
-            );
-            $url = $fileurl->out();
+
+            $items = [];
+            foreach($files as $file) {
+                if($file->get_filename() == '.') {
+                    continue;
+                }
+
+                $fileurl = moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                );
+                $url = $fileurl->out();
+
+                $items[] = $this->display_browse_field_item($file, $url, s($file->get_filename()));
+            }
         }
+
+        return \html_writer::alist($items);
+    }
+
+    function display_browse_field_item($file, $url, $name) {
+        global $OUTPUT;
 
         $icon = $OUTPUT->pix_icon(
             file_file_icon($file),
             get_mimetype_description($file),
             'moodle',
-            ['width' => 16, 'height' => 16]
+            ['width' => 32, 'height' => 32]
         );
 
-        return $icon . '&nbsp;<a class="data-field-link" href="'.$url.'" >' . s($name) . '</a>';
+        return $icon . '&nbsp;' . \html_writer::link($url, s($file->get_filename()), ['class' => 'data-field-link']);
     }
-
 
     // content: "a##b" where a is the file name, b is the display name
     function update_content($recordid, $value, $name='') {
@@ -205,27 +215,33 @@ class data_field_file extends data_field_base {
         $usercontext = context_user::instance($USER->id);
         $files = $fs->get_area_files($this->context->id, 'mod_data', 'content', $content->id, 'itemid, filepath, filename', false);
 
-        // We expect no or just one file (maxfiles = 1 option is set for the form_filemanager).
+        // No upper limit on files.
         if (count($files) == 0) {
+            $field = $DB->get_record('data_fields', array('id' => $this->field->id));
             $content->content = null;
         } else {
-            $content->content = array_values($files)[0]->get_filename();
-            if (count($files) > 1) {
-                // This should not happen with a consistent database. Inform admins/developers about the inconsistency.
-                debugging('more then one file found in mod_data instance {$this->data->id} file field (field id: {$this->field->id}) area during update data record {$recordid} (content id: {$content->id})', DEBUG_NORMAL);
+            $filenames = [];
+            foreach($files as $file) {
+                $filenames[] = $file->get_filename();
             }
+            $content->content = serialize($filenames);
         }
         $DB->update_record('data_content', $content);
     }
 
     /**
-     * Here we export the text value of a file field which is the filename of the exported file.
+     * Here we export the text value of a files field which is the filenames of the exported files.
      *
      * @param stdClass $record the record which is being exported
      * @return string the value which will be stored in the exported file for this field
      */
     public function export_text_value(stdClass $record): string {
-        return !empty($record->content) ? $record->content : '';
+        if (!empty($record->content)) {
+            $content = unserialize($record->content);
+            return implode(',',$content);
+        } else {
+            return '';
+        }
     }
 
     /**
@@ -234,7 +250,7 @@ class data_field_file extends data_field_base {
      * @return bool true which means that file export is being supported by this field type
      */
     public function file_export_supported(): bool {
-        return true;
+        return false;
     }
 
     /**
@@ -243,39 +259,7 @@ class data_field_file extends data_field_base {
      * @return bool true which means that file import is being supported by this field type
      */
     public function file_import_supported(): bool {
-        return true;
-    }
-
-    /**
-     * Provides the necessary code for importing a file when importing the content of a mod_data instance.
-     *
-     * @param int $contentid the id of the mod_data content record
-     * @param string $filecontent the content of the file to import as string
-     * @param string $filename the filename the imported file should get
-     * @return void
-     */
-    public function import_file_value(int $contentid, string $filecontent, string $filename): void {
-        $filerecord = [
-            'contextid' => $this->context->id,
-            'component' => 'mod_data',
-            'filearea' => 'content',
-            'itemid' => $contentid,
-            'filepath' => '/',
-            'filename' => $filename,
-        ];
-        $fs = get_file_storage();
-        $fs->create_file_from_string($filerecord, $filecontent);
-    }
-
-    /**
-     * Exports the file content for file export.
-     *
-     * @param stdClass $record the data content record the file belongs to
-     * @return null|string The file content of the stored file or null if no file should be exported for this record
-     */
-    public function export_file_value(stdClass $record): null|string {
-        $file = $this->get_file($record->id);
-        return $file ? $file->get_content() : null;
+        return false;
     }
 
     function file_ok($path) {
@@ -293,7 +277,8 @@ class data_field_file extends data_field_base {
         global $USER;
 
         $names = explode('_', $name);
-        if ($names[2] == 'file') {
+
+        if ($names[2] == 'files') {
             $usercontext = context_user::instance($USER->id);
             $fs = get_file_storage();
             $files = $fs->get_area_files($usercontext->id, 'user', 'draft', $value);
@@ -306,7 +291,6 @@ class data_field_file extends data_field_base {
      * Return the plugin configs for external functions.
      *
      * @return array the list of config parameters
-     * @since Moodle 3.3
      */
     public function get_config_for_external() {
         // Return all the config parameters.
