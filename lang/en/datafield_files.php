@@ -18,9 +18,8 @@
 /**
  * Strings for component 'datafield_files', language 'en', branch 'master'
  *
- * @package    datafield
- * @subpackage files
- * @copyright  2011 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
+ * @package    datafield_files
+ * @copyright  2024 Lafayette College ITS
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

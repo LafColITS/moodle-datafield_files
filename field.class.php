@@ -17,31 +17,39 @@
 /**
  * Class files field for database activity
  *
- * @package    datafield_file
- * @copyright  2005 Martin Dougiamas
+ * Forked from datafield_file and extended to support multiple files.
+ *
+ * @package    datafield_files
+ * @copyright  2024 Lafayette College ITS
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class data_field_files extends data_field_base {
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/../file/field.class.php');
+
+/**
+ * Class files field for database activity
+ *
+ * Forked from datafield_file and extended to support multiple files.
+ *
+ * @package    datafield_files
+ * @copyright  2024 Lafayette College ITS
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class data_field_files extends data_field_file {
+    /** @var string The internal datafield type */
     var $type = 'files';
 
-    public function supports_preview(): bool {
-        return true;
-    }
-
-    public function get_data_content_preview(int $recordid): stdClass {
-        return (object)[
-            'id' => 0,
-            'fieldid' => $this->field->id,
-            'recordid' => $recordid,
-            'content' => 'samplefile.csv',
-            'content1' => 'samplefile.csv',
-            'content2' => null,
-            'content3' => null,
-            'content4' => null,
-        ];
-    }
-
-    function display_add_field($recordid = 0, $formdata = null) {
+    /**
+     * Output control for editing content.
+     *
+     * @param int $recordid the id of the data record.
+     * @param object $formdata the submitted form.
+     *
+     * @return string
+     */
+    public function display_add_field($recordid = 0, $formdata = null) {
         global $CFG, $DB, $OUTPUT, $PAGE;
 
         // Necessary for the constants used in args.
@@ -49,18 +57,18 @@ class data_field_files extends data_field_base {
 
         $itemid = null;
 
-        // editing an existing database entry
+        // Editing an existing database entry.
         if ($formdata) {
             $fieldname = 'field_' . $this->field->id . '_files';
             $itemid = clean_param($formdata->$fieldname, PARAM_INT);
         } else if ($recordid) {
-            if (!$content = $DB->get_record('data_content', array('fieldid' => $this->field->id, 'recordid' => $recordid))) {
+            if (!$content = $DB->get_record('data_content', ['fieldid' => $this->field->id, 'recordid' => $recordid])) {
                 // Quickly make one now!
                 $content = new stdClass();
                 $content->fieldid  = $this->field->id;
                 $content->recordid = $recordid;
                 $id = $DB->insert_record('data_content', $content);
-                $content = $DB->get_record('data_content', array('id' => $id));
+                $content = $DB->get_record('data_content', ['id' => $id]);
             }
             file_prepare_draft_area($itemid, $this->context->id, 'mod_data', 'content', $content->id);
 
@@ -68,7 +76,7 @@ class data_field_files extends data_field_base {
             $itemid = file_get_unused_draft_itemid();
         }
 
-        // database entry label
+        // Database entry label.
         $html = '<div title="' . s($this->field->description) . '">';
         $html .= '<fieldset><legend><span class="accesshide">'.s($this->field->name);
 
@@ -80,7 +88,7 @@ class data_field_files extends data_field_base {
             $html .= '</span></legend>';
         }
 
-        // itemid element
+        // Itemid element.
         $html .= '<input type="hidden" name="field_'.$this->field->id.'_files" value="'.s($itemid).'" />';
 
         $options = new stdClass();
@@ -103,29 +111,14 @@ class data_field_files extends data_field_base {
         return $html;
     }
 
-    function display_search_field($value = '') {
-        return '<label class="accesshide" for="f_' . $this->field->id . '">' . s($this->field->name) . '</label>' .
-               '<input type="text" size="16" id="f_'.$this->field->id.'" name="f_'.$this->field->id.'" ' .
-                    'value="'.s($value).'" class="form-control"/>';
-    }
-
-    function generate_sql($tablealias, $value) {
-        global $DB;
-
-        static $i=0;
-        $i++;
-        $name = "df_file_$i";
-        return array(" ({$tablealias}.fieldid = {$this->field->id} AND ".$DB->sql_like("{$tablealias}.content", ":$name", false).") ", array($name=>"%$value%"));
-    }
-
-    public function parse_search_field($defaults = null) {
-        $param = 'f_'.$this->field->id;
-        if (empty($defaults[$param])) {
-            $defaults = array($param => '');
-        }
-        return optional_param($param, $defaults[$param], PARAM_NOTAGS);
-    }
-
+    /**
+     * Get the assciated files.
+     *
+     * @param int $recordid
+     * @param string $content string representation of names
+     *
+     * @return array
+     */
     function get_files($recordid, $content=null) {
         global $DB;
         if (empty($content)) {
@@ -142,6 +135,14 @@ class data_field_files extends data_field_base {
         return $files;
     }
 
+    /**
+     * Write out the list of files in a human-readable list.
+     *
+     * @param int $recordid the record id
+     * @param object $template the template object; unused
+     *
+     * @return string
+     */
     function display_browse_field($recordid, $template) {
         $content = $this->get_data_content($recordid);
 
@@ -185,7 +186,16 @@ class data_field_files extends data_field_base {
         return \html_writer::alist($items);
     }
 
-    function display_browse_field_item($file, $url, $name) {
+    /**
+     * Render a single file in the file list.
+     *
+     * @param stored_file $file a file object
+     * @param moodle_url $url the exported URL to the file
+     * @param string the plain language file name
+     *
+     * @return string
+     */
+    protected function display_browse_field_item($file, $url, $name) {
         global $OUTPUT;
 
         $icon = $OUTPUT->pix_icon(
@@ -198,15 +208,21 @@ class data_field_files extends data_field_base {
         return $icon . '&nbsp;' . \html_writer::link($url, s($file->get_filename()), ['class' => 'data-field-link']);
     }
 
-    // content: "a##b" where a is the file name, b is the display name
-    function update_content($recordid, $value, $name='') {
+    /**
+     * Create or update the content.
+     *
+     * @param int $recordid the record id
+     * @param string $value the the draft area id
+     * @param string $name constructed name of the field, such as "field_10_files"
+     */
+    public function update_content($recordid, $value, $name='') {
         global $CFG, $DB, $USER;
         $fs = get_file_storage();
 
         // Should always be available since it is set by display_add_field before initializing the draft area.
-        $content = $DB->get_record('data_content', array('fieldid' => $this->field->id, 'recordid' => $recordid));
+        $content = $DB->get_record('data_content', ['fieldid' => $this->field->id, 'recordid' => $recordid]);
         if (!$content) {
-            $content = (object)array('fieldid' => $this->field->id, 'recordid' => $recordid);
+            $content = (object)['fieldid' => $this->field->id, 'recordid' => $recordid];
             $content->id = $DB->insert_record('data_content', $content);
         }
 
@@ -217,7 +233,7 @@ class data_field_files extends data_field_base {
 
         // No upper limit on files.
         if (count($files) == 0) {
-            $field = $DB->get_record('data_fields', array('id' => $this->field->id));
+            $field = $DB->get_record('data_fields', ['id' => $this->field->id]);
             $content->content = null;
         } else {
             $filenames = [];
@@ -247,7 +263,7 @@ class data_field_files extends data_field_base {
     /**
      * Specifies that this field type supports the export of files.
      *
-     * @return bool true which means that file export is being supported by this field type
+     * @return bool
      */
     public function file_export_supported(): bool {
         return false;
@@ -256,67 +272,9 @@ class data_field_files extends data_field_base {
     /**
      * Specifies that this field type supports the import of files.
      *
-     * @return bool true which means that file import is being supported by this field type
+     * @return bool
      */
     public function file_import_supported(): bool {
         return false;
-    }
-
-    function file_ok($path) {
-        return true;
-    }
-
-    /**
-     * Custom notempty function
-     *
-     * @param string $value
-     * @param string $name
-     * @return bool
-     */
-    function notemptyfield($value, $name) {
-        global $USER;
-
-        $names = explode('_', $name);
-
-        if ($names[2] == 'files') {
-            $usercontext = context_user::instance($USER->id);
-            $fs = get_file_storage();
-            $files = $fs->get_area_files($usercontext->id, 'user', 'draft', $value);
-            return count($files) >= 2;
-        }
-        return false;
-    }
-
-    /**
-     * Return the plugin configs for external functions.
-     *
-     * @return array the list of config parameters
-     */
-    public function get_config_for_external() {
-        // Return all the config parameters.
-        $configs = [];
-        for ($i = 1; $i <= 10; $i++) {
-            $configs["param$i"] = $this->field->{"param$i"};
-        }
-        return $configs;
-    }
-
-    public function get_field_params(): array {
-        global $DB, $CFG;
-
-        $data = parent::get_field_params();
-
-        $course = $DB->get_record('course', ['id' => $this->data->course]);
-        $filesizes = get_max_upload_sizes($CFG->maxbytes, $course->maxbytes, 0, $this->field->param3);
-
-        foreach ($filesizes as $value => $name) {
-            if (!((isset($this->field->param3) && $value == $this->field->param3))) {
-                $data['filesizes'][] = ['name' => $name, 'value' => $value, 'selected' => 0];
-            } else {
-                $data['filesizes'][] = ['name' => $name, 'value' => $value, 'selected' => 1];
-            }
-        }
-
-        return $data;
     }
 }

@@ -15,9 +15,8 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package    datafield
- * @subpackage files
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @package    datafield_files
+ * @copyright  2024 Lafayette College ITS
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -25,4 +24,4 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->version   = 2024090500;        // The current plugin version (Date: YYYYMMDDXX).
 $plugin->requires  = 2024041600;        // Requires this Moodle version.
-$plugin->component = 'datafield_files';  // Full name of the plugin (used for diagnostics)
+$plugin->component = 'datafield_files';  // Full name of the plugin (used for diagnostics).

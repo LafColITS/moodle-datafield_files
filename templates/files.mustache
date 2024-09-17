@@ -30,6 +30,7 @@
     * description string The field's description.
     * required bool The field's requiredness.
     * filesizes array The field's file sizes.
+    * filler string Text to display in lieu of files if empty
 
     Example context (json):
     {
@@ -37,24 +38,13 @@
         "description": "A description",
         "required": true,
         "filesizes": [ { "name": "Site upload limit (64MB)", "value": "0", "selected": true },
-                     { "name": "64MB", "value": "67108864", "selected": false } ]
+                     { "name": "64MB", "value": "67108864", "selected": false } ],
+        "filler": "No files uploaded"
     }
 }}
 
 <fieldset>
-    {{> mod_data/fields/basicfields }}
-    {{> mod_data/fields/requiredfield }}
-    <div class="form-group row fitem">
-        <div class="col-md-3"><label for="param3" class="mb-0">
-            {{#str}}maxsize, data{{/str}}</label></div>
-        <div class="col-md-9 form-inline align-items-start felement">
-            <select id="param3" class="select custom-select form-control" name="param3">
-                {{#filesizes}}
-                    <option value="{{value}}" {{#selected}}selected{{/selected}}>{{name}}</option>
-                {{/filesizes}}
-            </select>
-        </div>
-    </div>
+    {{> datafield_file/file }}
     <div class="form-group row fitem">
         <div class="col-md-3"><label for="param4" class="mb-0">
             {{#str}}nofiles, datafield_files{{/str}}</label></div>
