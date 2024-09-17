@@ -14,16 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Class files field for database activity
- *
- * Forked from datafield_file and extended to support multiple files.
- *
- * @package    datafield_files
- * @copyright  2024 Lafayette College ITS
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../file/field.class.php');
@@ -39,7 +29,7 @@ require_once(__DIR__ . '/../file/field.class.php');
  */
 class data_field_files extends data_field_file {
     /** @var string The internal datafield type */
-    var $type = 'files';
+    public $type = 'files';
 
     /**
      * Output control for editing content.
@@ -119,7 +109,7 @@ class data_field_files extends data_field_file {
      *
      * @return array
      */
-    function get_files($recordid, $content=null) {
+    protected function get_files($recordid, $content=null) {
         global $DB;
         if (empty($content)) {
             if (!$content = $this->get_data_content($recordid)) {
@@ -143,7 +133,7 @@ class data_field_files extends data_field_file {
      *
      * @return string
      */
-    function display_browse_field($recordid, $template) {
+    public function display_browse_field($recordid, $template) {
         $content = $this->get_data_content($recordid);
 
         if (!$content || empty($content->content)) {
@@ -164,8 +154,8 @@ class data_field_files extends data_field_file {
             }
 
             $items = [];
-            foreach($files as $file) {
-                if($file->get_filename() == '.') {
+            foreach ($files as $file) {
+                if ($file->get_filename() == '.') {
                     continue;
                 }
 
@@ -191,7 +181,7 @@ class data_field_files extends data_field_file {
      *
      * @param stored_file $file a file object
      * @param moodle_url $url the exported URL to the file
-     * @param string the plain language file name
+     * @param string $name the plain language file name
      *
      * @return string
      */
@@ -237,7 +227,7 @@ class data_field_files extends data_field_file {
             $content->content = null;
         } else {
             $filenames = [];
-            foreach($files as $file) {
+            foreach ($files as $file) {
                 $filenames[] = $file->get_filename();
             }
             $content->content = serialize($filenames);
@@ -254,7 +244,7 @@ class data_field_files extends data_field_file {
     public function export_text_value(stdClass $record): string {
         if (!empty($record->content)) {
             $content = unserialize($record->content);
-            return implode(',',$content);
+            return implode(',', $content);
         } else {
             return '';
         }
